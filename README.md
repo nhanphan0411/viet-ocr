@@ -2,12 +2,14 @@
 BiLSTM DNN model to recognize handwritten Vietnamese. Dataset is acquired from Cinnamon AI Challenge. 
 
 ## Project Structure 
+```
 |--data/
 |----raw/
 |------0825_DataSamples_1/
 |------0916_DataSamples_2/
 |------1015_Private_Test/
 |--src/
+```
 
 ## Data preprocessing
 Move to /src and run this to transform the data

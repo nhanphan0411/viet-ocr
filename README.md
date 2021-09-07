@@ -72,7 +72,7 @@ python train.py --train
 
 I trained the model for 30 epochs with learning_rate of 1e-3, then after that decay it to 1e-5. Clearly. the training could have been stopped early at epoch 20. 
 
-<img src='https://i.imgur.com/BP7D32o.png'>
+<img src='https://i.imgur.com/wjojtNZ.png'>
 
 <br>
 

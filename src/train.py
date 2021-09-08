@@ -20,14 +20,14 @@ import evaluation
 
 charset_base = "φ #'()+,-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYabcdeghiklmnopqrstuvwxyzĂÂÊÔƠƯăâêôơưÁẮẤÉẾÓỐỚÚỨÍÝáắấéếóốớúứíýÀẰẦÈỀÒỒỜÙỪÌỲàằầèềòồờùừìỳẢẲẨẺỂỎỔỞỦỬỈỶảẳẩẻểỏổởủửỉỷÃẴẪẼỄÕỖỠŨỮĨỸãẵẫẽễõỗỡũữĩỹẠẶẬẸỆỌỘỢỤỰỊỴạặậẹệọộợụựịỵĐđ"
 vocab_size = len(charset_base)
-MAX_LABEL_LENGTH = 70
-INPUT_SIZE = (64, 1024, 1)
+MAX_LABEL_LENGTH = 277
+INPUT_SIZE = (128, 2048, 1)
 PAD_TK = "φ"
 
 BATCH_SIZE = 32
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-# LOAD LABELS FOR TRAINING
+# ------------- LOAD LABELS FOR TRAINING -------------
 def get_label(type_):
     labels = json.load(open(os.path.join('..', 'data', '{}.json'.format(type_))))
     return labels
@@ -38,19 +38,18 @@ def text_to_labels(text):
 def labels_to_text(labels):
     return ''.join(list(map(lambda x: charset_base[x] if x < len(charset_base) else "", labels)))
 
-# LOAD IMAGES FOR TRAINING
+# ------------- LOAD IMAGES FOR TRAINING -------------
 def load_image_to_tensor(path):
     image = tf.io.read_file(path)
     image = tf.image.decode_jpeg(image, channels=1)
     image = tf.image.convert_image_dtype(image, tf.float32)
-    image = image/255.
 
     return image
 
 def load_and_preprocess_from_path_label(path, label):
     return load_image_to_tensor(path), label
 
-# MAP IMAGES AND LABELS INTO TENSORFLOW DATASET 
+# ------------- PREPARE TF DATASET -------------
 def prepare_for_training(dataset, cache=True, shuffle_buffer_size=100, augment=False):
     if cache:
         if isinstance(cache, str):
@@ -107,7 +106,7 @@ def build_dataset(type_, cache=False, augment=False, training=True):
 
     return dataset, steps_per_epoch, labels
 
-# DECODE PREDICTIONS 
+# ------------- DECODE PREDICTIONS -------------
 def decode_batch(out):
     result = []
     for j in range(out.shape[0]):
@@ -124,7 +123,7 @@ if __name__ == "__main__":
     parser.add_argument("--path", type=str, required=False) # path to test data
     args = parser.parse_args()
     
-    # TRAINING PROCESS 
+    # ------------- TRAIN -------------
     if args.train:
         train_ds, num_steps_train, _ = build_dataset('train', cache=True, augment=True)
         test_ds, num_steps_val, _ = build_dataset('test', training=False)
@@ -140,12 +139,10 @@ if __name__ == "__main__":
                     validation_steps = num_steps_val,
                     callbacks=callbacks)
 
-        # DOCUMENT TRAINING SESSION
         total_time = datetime.datetime.now() - start_time
 
         loss = h.history['loss']
         val_loss = h.history['val_loss']
-
         min_val_loss = min(val_loss)
         min_val_loss_i = val_loss.index(min_val_loss)
 
@@ -164,7 +161,7 @@ if __name__ == "__main__":
             f.write(t_corpus)
             print(t_corpus)
 
-    # TESTING SESSION
+    # ------------- TRAINING PROCESS -------------
     elif args.test:
         checkpoint = './weights_1.hdf5'
         assert os.path.isfile(checkpoint) and os.path.exists(args.path)
@@ -203,7 +200,7 @@ if __name__ == "__main__":
         print(predicts)
         print(labels)
         
-        # DOCUMENT TESTING SESSION 
+        # ------------- EVALUATE -------------
         prediction_file = os.path.join('.', 'predictions_{}.txt'.format(type_))
 
         with open(prediction_file, "w") as f:

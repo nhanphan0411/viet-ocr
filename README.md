@@ -18,7 +18,7 @@ The project successfully achieved
 The [hackathon's winner](https://pbcquoc.github.io/vietnamese-ocr/) score is 0.1x on the Word Error Rate. Other metric results were not disclosed.
 
 Sample predictions: *above - label, below - prediction*
-<img src='https://i.imgur.com/SiLsa68.png'>
+<img src='https://i.imgur.com/tnbkP21.png'>
 
 
 <br>
@@ -58,8 +58,9 @@ python transform.py --type [train or test or val] --sample
 ## 🕸 MODEL
 
 CRNN + CTC Loss is used to solve this challenge. The CRNN model comprised.
-The CNN blocks with skip connections (inspired by ResNet50) are used to extract the features from the input image. After that, the feature map will be flattened into the Bi-directional LSTM layers.
+The CNN blocks with skip connections (inspired by ResNet50) are used to extract the features from the input image. After that, the feature map will be passed through the LSTM layers.
 
+<img src='https://i.imgur.com/CYjr2Kz.png'>
 
 
 <br>
@@ -72,7 +73,7 @@ python train.py --train
 
 I trained the model for 30 epochs with learning_rate of 1e-3, then after that decay it to 1e-5. Clearly. the training could have been stopped early at epoch 20. 
 
-<img src='https://i.imgur.com/wjojtNZ.png'>
+<img src='https://i.imgur.com/wjojtNZ.png' width=700>
 
 <br>
 
@@ -83,4 +84,4 @@ python train.py --test --path [path to the test images]
 ```
 *Example* `python3 train.py --test --path ../data/test.`
 
-Then predicted texts and the ground truth texts will be stored in predictions_text.txt
+Predictions will be saved as predictions_text.txt

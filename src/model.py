@@ -15,38 +15,14 @@ import numpy as np
 def ctc_loss_lambda_func(y_true, y_pred):
     """Function for computing the CTC loss"""
 
-    if len(y_true.shape) > 2:
-        y_true = tf.squeeze(y_true)
-
-    input_length = tf.math.reduce_sum(y_pred, axis=-1, keepdims=False)
-    input_length = tf.math.reduce_sum(input_length, axis=-1, keepdims=True)
+    input_length = tf.ones(BATCH_SIZE) * MAX_LABEL_LENGTH
+    input_length = tf.expand_dims(input_length, axis=-1)
     label_length = tf.math.count_nonzero(y_true, axis=-1, keepdims=True, dtype="int64")
 
     loss = K.ctc_batch_cost(y_true, y_pred, input_length, label_length)
     loss = tf.reduce_mean(loss)
 
     return loss
-
-class CollectBatchStats(tf.keras.callbacks.Callback):
-    def __init__(self):
-        self.batch_losses = []
-        self.batch_acc = []
-        self.batch_val_losses = []
-        self.batch_val_acc = []
-
-    def on_train_batch_end(self, batch, logs=None):
-        self.batch_losses.append(logs['loss'])
-        self.batch_acc.append(logs['acc'])
-        # reset_metrics: the metrics returned will be only for this batch. 
-        # If False, the metrics will be statefully accumulated across batches.
-        self.model.reset_metrics()
-  
-    def on_test_batch_end(self, batch, logs=None):
-        self.batch_val_losses.append(logs['loss'])
-        self.batch_val_acc.append(logs['acc'])
-        # reset_metrics: the metrics returned will be only for this batch. 
-        # If False, the metrics will be statefully accumulated across batches.
-        self.model.reset_metrics()
 
 def plot_stats(training_stats, val_stats, x_label='Training Steps', stats='loss'):
     stats, x_label = stats.title(), x_label.title()
@@ -66,13 +42,6 @@ def plot_stats(training_stats, val_stats, x_label='Training Steps', stats='loss'
 def get_callbacks(checkpoint='weights_1.hdf5', monitor="val_loss", verbose=0):
     """Setup the list of callbacks for the model"""
     callbacks = [
-        TensorBoard(
-            log_dir='./logs',
-            histogram_freq=10,
-            profile_batch=0,
-            write_graph=True,
-            write_images=False,
-            update_freq="epoch"),
         ModelCheckpoint(
             filepath=checkpoint,
             monitor=monitor,
@@ -96,52 +65,59 @@ def get_callbacks(checkpoint='weights_1.hdf5', monitor="val_loss", verbose=0):
     return callbacks
 
 def build_model(input_size, d_model, learning_rate=1e-3):    
-    inputs = Input(shape=input_size)
-    (64, 1024, 1)
-    conv_1 = Conv2D(64, (3,3), activation = 'relu', padding='same')(inputs)
-    (32, 512, 64)
-    pool_1 = MaxPool2D(pool_size=(2, 2), strides=2)(conv_1)
-    
-    (32, 512, 128)
-    conv_2 = Conv2D(128, (3,3), activation = 'relu', padding='same')(pool_1)
-    (16, 256, 128)
-    pool_2 = MaxPool2D(pool_size=(2, 2), strides=2)(conv_2)
+    inputs = Input(shape=(input_size))
+ 
+    x = tf.keras.layers.experimental.preprocessing.Rescaling(1./255)(inputs)
 
-    (16, 256, 256)
-    conv_3 = Conv2D(256, (3,3), activation = 'relu', padding='same')(pool_2)
-    (8, 256, 256)
-    pool_3 = MaxPool2D(pool_size=(2, 1))(conv_3)
-    batch_norm_3 = BatchNormalization()(pool_3)
+    # Block 1 
+    x = Conv2D(64, (3,3), padding='same')(x)
+    x = MaxPool2D(pool_size=(3, 3), strides=3)(x)
+    x = Activation('relu')(x)
 
-    conv_4 = Conv2D(256, (3,3), activation = 'relu', padding='same')(batch_norm_3)
-    batch_norm_5 = BatchNormalization()(conv_4)
+    # Block 2 
+    x = Conv2D(128, (3,3), padding='same')(x)
+    x = MaxPool2D(pool_size=(3, 3), strides=3)(x)
+    x = Activation('relu')(x)
 
-    (8, 256, 512)
-    conv_6 = Conv2D(512, (3,3), activation = 'relu', padding='same')(batch_norm_5)
-    batch_norm_6 = BatchNormalization()(conv_6)
+    # Block 3 
+    x = Conv2D(256, (3,3), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x_1 = x
 
-    conv_7 = Conv2D(512, (2,2), activation = 'relu', padding='same')(batch_norm_6)
-    (4, 128, 512)
-    pool_7 = MaxPool2D(pool_size=(2, 2))(conv_7)
+    x = Conv2D(256, (3,3), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Add()([x, x_1])
+    x = Activation('relu')(x)
 
-    conv_8 = Conv2D(512, (2,2), activation = 'relu', padding='same')(pool_7)
-    (2, 128, 512)
-    pool_8 = MaxPool2D(pool_size=(2, 1))(conv_8)
-    (1, 128, 512)
-    pool_9 = MaxPool2D(pool_size=(2, 1))(pool_8)
-    
-    # # to remove the first dimension of one: (1, 31, 512) to (31, 512) 
-    squeezed = Lambda(lambda x: K.squeeze(x, 1))(pool_9)
-    
-    # # # bidirectional LSTM layers with units=128
-    blstm_1 = Bidirectional(LSTM(256, return_sequences=True, dropout = 0.2))(squeezed)
-    blstm_2 = Bidirectional(LSTM(256, return_sequences=True, dropout = 0.2))(blstm_1)
+    # Block 4 
+    x = Conv2D(512, (3,3), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x_2 = x
 
-    # # this is our softmax character proprobility with timesteps 
-    outputs = Dense(units = d_model, activation = 'softmax')(blstm_2)
+    x = Conv2D(512, (3,3), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Add()([x, x_2])
+    x = Activation('relu')(x)
 
-    # model to be used at test time
+    # Block 5
+    x = Conv2D(1024, (3,3), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = MaxPool2D(pool_size=(3, 1))(x)
+    x = Activation('relu')(x)
+
+    x = MaxPool2D(pool_size=(3, 1))(x)
+
+    squeezed = Lambda(lambda x: K.squeeze(x, 1))(x)
+
+    blstm_1 = Bidirectional(LSTM(512, return_sequences=True, dropout = 0.2))(squeezed)
+    blstm_2 = Bidirectional(LSTM(512, return_sequences=True, dropout = 0.2))(blstm_1)
+
+    outputs = Dense(units = VOCAB_SIZE+1, activation = 'softmax')(blstm_2)
+
     model = Model(inputs, outputs)
+    model.summary()
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
     model.compile(optimizer=optimizer, loss=ctc_loss_lambda_func)

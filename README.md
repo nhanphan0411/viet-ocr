@@ -57,8 +57,8 @@ python transform.py --type [train or test or val] --sample
 
 ## 🕸 MODEL
 
-CRNN + CTC Loss is used to solve this challenge. The CRNN model comprised.
-The CNN blocks with skip connections (inspired by ResNet50) are used to extract the features from the input image. After that, the feature map will be passed through the LSTM layers.
+CRNN + CTC Loss is used to solve this challenge.
+CNN blocks with skip connections (inspired by ResNet50) are used to extract the features from the input image. The extracted feature map will be then passed through the LSTM layers.
 
 <img src='https://i.imgur.com/CYjr2Kz.png'>
 
